@@ -3,7 +3,7 @@ name: Build PlanMgr 1.0.0
 on:
   push:
     branches: [main, master]
-    tags: ['v1.0.0']
+    tags: ['1.0.0', 'v1.0.0']
   pull_request:
     branches: [main, master]
   workflow_dispatch:
