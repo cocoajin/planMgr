@@ -1,0 +1,58 @@
+name: Build PlanMgr 1.0.0
+
+on:
+  push:
+    branches: [main, master]
+    tags: ['v1.0.0']
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: darwin-arm64
+            runner: macos-14
+            archive: planMgr-go-darwin-arm64.zip
+          - target: linux-arm64
+            runner: ubuntu-22.04
+            archive: planMgr-go-linux-arm64.tar.gz
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.27.1'
+          cache-dependency-path: go.sum
+      - name: Download and verify dependencies
+        run: |
+          go mod download
+          go mod verify
+      - name: Test on build host
+        run: go test ./...
+      - name: Check version
+        run: test "$(go run . --version)" = "1.0.0"
+      - name: Build installation package
+        run: python3 scripts/build.py --target "${{ matrix.target }}"
+      - name: Verify package checksum
+        working-directory: dist
+        run: shasum -a 256 -c SHA256SUMS
+      - name: Upload installation package
+        uses: actions/upload-artifact@v4
+        with:
+          name: planMgr-1.0.0-${{ matrix.target }}
+          path: |
+            dist/${{ matrix.archive }}
+            dist/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 30
